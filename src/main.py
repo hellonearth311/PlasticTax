@@ -1,4 +1,10 @@
 import customtkinter as ctk
+from PIL import Image
+
+# TODO
+# Add ability to set default values for inputs
+# Add a settings menu to change default values and app theming
+# Add ability to save results to a file and also generate a PDF report
 
 def show_error_popup(title, message):
     popup = ctk.CTkToplevel()
@@ -42,6 +48,13 @@ def calculate_cost(filament_cost_per_kg, print_weight, estimated_print_time, ele
 root = ctk.CTk()
 root.title("PlasticTax")
 root.geometry("600x600")
+
+# Load the image
+bg_image = ctk.CTkImage(Image.open("src/img/hexagons.png"), size=(600, 600))
+
+# Create a label with the image
+bg_label = ctk.CTkLabel(root, image=bg_image, text="")
+bg_label.place(x=0, y=0, relwidth=1, relheight=1)
 
 title = ctk.CTkLabel(root, text="PlasticTax", font=("poppins", 40))
 title.place(relx=0.5, rely=0.1, anchor="center")
