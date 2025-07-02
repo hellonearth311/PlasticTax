@@ -3,8 +3,7 @@ from PIL import Image
 from CTkToolTip import CTkToolTip
 
 # TODO
-# Add ability to save results to a file and also generate a PDF report
-# Allow cost calculation for muiltiple prints (multiply cost by number of prints)
+# Add ability to generate a PDF report
 
 def show_error_popup(title, message):
     popup = ctk.CTkToplevel()
@@ -44,6 +43,11 @@ def show_settings_popup():
 
 def close_and_save_settings(popup, defaultFilamentCost, defaultElectricityCost, defaultPrinterPower):
     popup.destroy()
+    # Ensure the data directory exists
+    import os
+    os.makedirs("src/data", exist_ok=True)
+    
+    # Write new settings, completely overwriting the file
     with open("src/data/settings.csv", "w") as settings_file:
         settings_file.write("default_filament_cost,default_electricity_cost,default_printer_power\n")
         settings_file.write(f"{defaultFilamentCost},{defaultElectricityCost},{defaultPrinterPower}\n")
@@ -65,6 +69,13 @@ def read_default_value(value):
     except FileNotFoundError:
         show_error_popup("Settings Error", "Settings file not found. Please set your defaults in the settings menu.")
     return ""
+
+def load_default_value(entry_widget, value_type):
+    """Load default value into entry widget, clearing existing content first"""
+    default_value = read_default_value(value_type)
+    if default_value:
+        entry_widget.delete(0, 'end')  # Clear existing content
+        entry_widget.insert(0, default_value)  # Insert default value
 
 
 def calculate_cost(filament_cost_per_kg, print_weight, estimated_print_time, electricity_cost_per_kwh, printer_power_rating):
@@ -120,7 +131,7 @@ filament_help_btn = ctk.CTkButton(root, text="?", width=25, height=25,
 filament_help_btn.place(relx=0.7, rely=0.2, anchor="center")
 
 CTkToolTip(filament_help_btn, message="Enter the cost of your filament per kilogram in dollars (e.g., 25.00)")
-filament_load_defaults_btn = ctk.CTkButton(root, text="Load Defaults", command=lambda: filament_cost_per_kg.insert(0, read_default_value("filament_cost")))
+filament_load_defaults_btn = ctk.CTkButton(root, text="Load Defaults", command=lambda: load_default_value(filament_cost_per_kg, "filament_cost"))
 
 filament_load_defaults_btn.place(relx=0.85, rely=0.2, anchor="center")
 CTkToolTip(filament_load_defaults_btn, message="Load default filament cost from settings")
@@ -155,7 +166,7 @@ electricity_help_btn = ctk.CTkButton(root, text="?", width=25, height=25,
 electricity_help_btn.place(relx=0.7, rely=0.5, anchor="center")
 CTkToolTip(electricity_help_btn, message="Enter your electricity cost per kWh in cents (check your electricity bill!)")
 
-electricity_load_defaults_btn = ctk.CTkButton(root, text="Load Defaults", command=lambda: electricity_cost_per_kwh.insert(0, read_default_value("electricity_cost")))
+electricity_load_defaults_btn = ctk.CTkButton(root, text="Load Defaults", command=lambda: load_default_value(electricity_cost_per_kwh, "electricity_cost"))
 electricity_load_defaults_btn.place(relx=0.85, rely=0.5, anchor="center")
 CTkToolTip(electricity_load_defaults_btn, message="Load default electricity cost from settings")
 
@@ -169,7 +180,7 @@ power_help_btn = ctk.CTkButton(root, text="?", width=25, height=25,
 power_help_btn.place(relx=0.7, rely=0.6, anchor="center")
 CTkToolTip(power_help_btn, message="Enter your 3D printer's power consumption in watts (check your printer's specifications or manual)")
 
-power_load_defaults_btn = ctk.CTkButton(root, text="Load Defaults", command=lambda: printer_power_rating.insert(0, read_default_value("printer_power")))
+power_load_defaults_btn = ctk.CTkButton(root, text="Load Defaults", command=lambda: load_default_value(printer_power_rating, "printer_power"))
 power_load_defaults_btn.place(relx=0.85, rely=0.6, anchor="center")
 CTkToolTip(power_load_defaults_btn, message="Load default printer power rating from settings")
 
