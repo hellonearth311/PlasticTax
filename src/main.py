@@ -3,7 +3,8 @@ from PIL import Image
 from CTkToolTip import CTkToolTip
 
 # TODO
-# Add ability to generate a PDF report
+# initialization (install all the libraries for the user and the font)
+# let the user choose where to store the settings file and the pdf report
 
 def show_error_popup(title, message):
     popup = ctk.CTkToplevel()
@@ -43,16 +44,19 @@ def show_settings_popup():
 
 def close_and_save_settings(popup, defaultFilamentCost, defaultElectricityCost, defaultPrinterPower):
     popup.destroy()
-    # Ensure the data directory exists
-    import os
-    os.makedirs("src/data", exist_ok=True)
-    
-    # Write new settings, completely overwriting the file
-    with open("src/data/settings.csv", "w") as settings_file:
-        settings_file.write("default_filament_cost,default_electricity_cost,default_printer_power\n")
-        settings_file.write(f"{defaultFilamentCost},{defaultElectricityCost},{defaultPrinterPower}\n")
-    
-    show_error_popup("Settings Saved", "Your settings have been saved successfully.")
+    try:
+        # Ensure the data directory exists
+        import os
+        os.makedirs("src/data", exist_ok=True)
+        
+        # Write new settings, completely overwriting the file
+        with open("src/data/settings.csv", "w") as settings_file:
+            settings_file.write("default_filament_cost,default_electricity_cost,default_printer_power\n")
+            settings_file.write(f"{defaultFilamentCost},{defaultElectricityCost},{defaultPrinterPower}\n")
+        
+        show_error_popup("Settings Saved", "Your settings have been saved successfully.")
+    except Exception as e:
+        show_error_popup("Settings Error", f"An error occurred while saving settings: {str(e)}")
 
 def read_default_value(value):
     try:
@@ -107,6 +111,66 @@ def calculate_cost(filament_cost_per_kg, print_weight, estimated_print_time, ele
     except ValueError:
         show_error_popup("Invalid Input", "Please enter valid numeric values.")
         return None, None, None
+
+def generate_pdf(filament_cost_entry, print_weight_entry, estimated_print_time_entry, electricity_cost_entry, printer_power_rating_entry):
+    filament_cost_per_kg = filament_cost_entry.get()
+    print_weight = print_weight_entry.get()
+    estimated_print_time = estimated_print_time_entry.get()
+    electricity_cost_per_kwh = electricity_cost_entry.get()
+    printer_power_rating = printer_power_rating_entry.get()
+
+    filament_cost = filament_cost_label.cget("text")
+    electricity_cost = electricity_cost_label.cget("text")
+    total_cost = total_cost_label.cget("text")
+
+    if filament_cost == "hit calculate to see result!" or electricity_cost == "hit calculate to see result!" or total_cost == "hit calculate to see result!":
+        show_error_popup("No Results", "Please calculate the costs before exporting a PDF report.")
+        return
+    try:
+        from fpdf import FPDF
+
+        pdf = FPDF()
+        pdf.add_page()
+
+        # Set title
+        pdf.set_font("Arial", 'B', 16)
+        pdf.cell(0, 10, "PlasticTax Cost Report", ln=True, align='C')
+
+        # Add some space
+        pdf.ln(20)
+
+        # Set font for content
+        pdf.set_font("Arial", size=12)
+
+        # show calculation for filament cost
+        pdf.cell(0, 10, f"Filament Cost per kg: ${filament_cost_per_kg}", ln=True)
+        pdf.cell(0, 10, f"Weight of Print: {print_weight} grams", ln=True)
+        pdf.cell(0, 10, f"{print_weight} grams = {float(print_weight) / 1000:.2f} kg", ln=True)
+        pdf.cell(0, 10, f"{filament_cost_per_kg} * {float(print_weight) / 1000:.2f} kg = {filament_cost}", ln=True)
+
+        pdf.ln(10)
+
+        # show calculation for electricity cost
+        pdf.cell(0, 10, f"Estimated Print Time: {estimated_print_time} hours", ln=True)
+        pdf.cell(0, 10, f"Electricity Cost per kWh: ${float(electricity_cost_per_kwh) / 100:.2f}", ln=True)
+        pdf.cell(0, 10, f"Printer Power Rating: {printer_power_rating} watts", ln=True)
+        pdf.cell(0, 10, f"{printer_power_rating} watts = {float(printer_power_rating) / 1000:.2f} kW", ln=True)
+        pdf.cell(0, 10, f"{float(electricity_cost_per_kwh) / 100:.2f} * {float(printer_power_rating) / 1000:.2f} kW * {estimated_print_time} hours = {electricity_cost}", ln=True)
+
+        # draw a line here
+        pdf.line(10, pdf.get_y() + 5, 200, pdf.get_y() + 5)
+        pdf.ln(10)
+
+        # show total cost
+        pdf.cell(0, 10, f"Total Cost =  {filament_cost} + {electricity_cost} = {total_cost}", ln=True)
+
+        # Save the PDF to a file
+        pdf_output_path = "plastic_tax_report.pdf"
+        pdf.output(pdf_output_path)
+
+        show_error_popup("PDF Exported", f"PDF report has been generated and saved to {pdf_output_path}. Please remove it from the data folder before creating another report, as this one will be overridden.")
+    except ImportError:
+        show_error_popup("PDF Export Error", "The fpdf library is not installed. Please install it using 'pip install fpdf' to enable PDF report generation.")
 
 root = ctk.CTk()
 root.title("PlasticTax")
@@ -206,7 +270,14 @@ electricity_cost_label.place(relx=0.5, rely=0.85, anchor="center")
 total_cost_label = ctk.CTkLabel(root, text="Total Cost: hit calculate to see result!", font=("poppins", 14))
 total_cost_label.place(relx=0.5, rely=0.9, anchor="center")
 
+
+# misc buttons
 settings_button = ctk.CTkButton(root, text="Settings", command=lambda: show_settings_popup())
 settings_button.place(relx=0.05, rely=0.05, anchor="nw")
+
+export_pdf_report_button = ctk.CTkButton(root, text="Export PDF Report", command=lambda: generate_pdf(filament_cost_per_kg, print_weight, estimated_print_time, electricity_cost_per_kwh, printer_power_rating))
+export_pdf_report_button.place(relx=0.4, rely=0.93, anchor="nw")
+
+
 
 root.mainloop()
