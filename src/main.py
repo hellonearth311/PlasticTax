@@ -3,25 +3,58 @@ import customtkinter as ctk
 from PIL import Image
 from CTkToolTip import CTkToolTip
 import os
+import platform
 from tkinter import filedialog
 
 def register_custom_font():
     try:
-        ctk.CTkFont(name="poppins", file="src/fonts/Poppins-Regular.ttf")
+        # Try different methods for font registration with CustomTkinter
+        import tkinter.font as tkFont
+        font_path = "src/fonts/Poppins-Regular.ttf"
+        if os.path.exists(font_path):
+            # Register with tkinter font system
+            tkFont.Font(family="Poppins", size=12)
+        print("Font registration attempted")
     except Exception as e:
         print("Font load error:", e)
 
 register_custom_font()
 
-def get_settings_file_path():
-    """Get the path for the settings file, defaulting to src/data/ if not set"""
-    settings_dir = read_default_value("settings_directory")
-    if settings_dir and os.path.exists(settings_dir):
-        return os.path.join(settings_dir, "settings.csv")
+def get_default_settings_path():
+    """Get platform-specific default settings path"""
+    system = platform.system()
+    
+    if system == "Windows":
+        # Windows: LOCALAPPDATA\PlasticTax\settings.csv
+        localappdata = os.environ.get('LOCALAPPDATA', os.path.expanduser('~\\AppData\\Local'))
+        settings_dir = os.path.join(localappdata, 'PlasticTax')
+    elif system == "Darwin":  # macOS
+        # macOS: ~/Library/Application Support/PlasticTax/settings.csv
+        settings_dir = os.path.expanduser('~/Library/Application Support/PlasticTax')
     else:
-        # Default path
-        os.makedirs("src/data", exist_ok=True)
-        return "src/data/settings.csv"
+        # Fallback for other systems (including Linux)
+        settings_dir = os.path.expanduser('~/.plastictax')
+    
+    # Create directory if it doesn't exist
+    os.makedirs(settings_dir, exist_ok=True)
+    return os.path.join(settings_dir, 'settings.csv')
+
+def create_default_settings():
+    """Create default settings file if it doesn't exist"""
+    settings_path = get_default_settings_path()
+    
+    if not os.path.exists(settings_path):
+        try:
+            with open(settings_path, 'w') as f:
+                f.write("default_filament_cost,default_electricity_cost,default_printer_power,appearance_mode,color_theme,pdf_export_directory\n")
+                f.write("25.00,12.0,300.0,Dark,Blue,\n")  # Default values
+            print(f"Created default settings file at: {settings_path}")
+        except Exception as e:
+            print(f"Failed to create settings file: {e}")
+
+def get_settings_file_path():
+    """Get the path for the settings file"""
+    return get_default_settings_path()
 
 def get_pdf_export_path():
     """Get the directory for PDF exports, defaulting to current directory if not set"""
@@ -30,6 +63,9 @@ def get_pdf_export_path():
         return pdf_dir
     else:
         return os.getcwd()  # Current directory as default
+
+# Initialize settings on startup
+create_default_settings()
 
 
 def show_error_popup(title, message):
@@ -44,7 +80,7 @@ def show_error_popup(title, message):
 def show_settings_popup():
     popup = ctk.CTkToplevel()
     popup.title("Settings")
-    popup.geometry("500x600")
+    popup.geometry("500x550")
 
     if get_ctk_appearance_mode(read_default_value("appearance_mode")) == "dark":
         # Load the image
@@ -59,55 +95,46 @@ def show_settings_popup():
         bg_label.place(x=0, y=0, relwidth=1, relheight=1)
 
     settingsLabel = ctk.CTkLabel(popup, text="Settings", font=("poppins", 20))
-    settingsLabel.place(relx=0.5, rely=0.05, anchor="center")
+    settingsLabel.place(relx=0.5, rely=0.08, anchor="center")
     
     # Default values section
-    defaultFilamentCostInput = ctk.CTkEntry(popup, placeholder_text="Default Filament Cost per kg (dollars)", width=300)
-    defaultFilamentCostInput.place(relx=0.5, rely=0.15, anchor="center")
+    defaultFilamentCostInput = ctk.CTkEntry(popup, placeholder_text="Default Filament Cost per kg (dollars)", width=350)
+    defaultFilamentCostInput.place(relx=0.5, rely=0.18, anchor="center")
 
-    defaultElectricityCostInput = ctk.CTkEntry(popup, placeholder_text="Default Electricity Cost per kWh (cents)", width=300)
-    defaultElectricityCostInput.place(relx=0.5, rely=0.25, anchor="center")
+    defaultElectricityCostInput = ctk.CTkEntry(popup, placeholder_text="Default Electricity Cost per kWh (cents)", width=350)
+    defaultElectricityCostInput.place(relx=0.5, rely=0.28, anchor="center")
 
-    defaultPrinterPowerInput = ctk.CTkEntry(popup, placeholder_text="Default Printer Power Rating (watts)", width=300)
-    defaultPrinterPowerInput.place(relx=0.5, rely=0.35, anchor="center")
+    defaultPrinterPowerInput = ctk.CTkEntry(popup, placeholder_text="Default Printer Power Rating (watts)", width=350)
+    defaultPrinterPowerInput.place(relx=0.5, rely=0.38, anchor="center")
 
     # Appearance settings
     appearanceModeLabel = ctk.CTkLabel(popup, text="Appearance Mode", font=("poppins", 14))
-    appearanceModeLabel.place(relx=0.5, rely=0.45, anchor="center")
+    appearanceModeLabel.place(relx=0.5, rely=0.48, anchor="center")
     appearanceModeOptions = ["Dark", "Light"]
     appearanceModeDropdown = ctk.CTkOptionMenu(popup, values=appearanceModeOptions)
-    appearanceModeDropdown.place(relx=0.5, rely=0.5, anchor="center")
+    appearanceModeDropdown.place(relx=0.5, rely=0.53, anchor="center")
 
     colorThemeLabel = ctk.CTkLabel(popup, text="Color Theme", font=("poppins", 14))
-    colorThemeLabel.place(relx=0.5, rely=0.55, anchor="center")
+    colorThemeLabel.place(relx=0.5, rely=0.58, anchor="center")
     colorThemeOptions = ["Blue", "Green", "Dark Blue"]
     colorThemeDropdown = ctk.CTkOptionMenu(popup, values=colorThemeOptions)
-    colorThemeDropdown.place(relx=0.5, rely=0.6, anchor="center")
+    colorThemeDropdown.place(relx=0.5, rely=0.63, anchor="center")
 
-    # Directory settings
-    settingsDirLabel = ctk.CTkLabel(popup, text="Settings Directory", font=("poppins", 14))
-    settingsDirLabel.place(relx=0.5, rely=0.67, anchor="center")
-    
-    current_settings_dir = read_default_value("settings_directory") or "src/data"
-    settingsDirButton = ctk.CTkButton(popup, text=f"Choose Directory ({current_settings_dir})", 
-                                     command=lambda: choose_settings_directory(settingsDirButton))
-    settingsDirButton.place(relx=0.5, rely=0.72, anchor="center")
-
+    # PDF Export Directory setting
     pdfDirLabel = ctk.CTkLabel(popup, text="PDF Export Directory", font=("poppins", 14))
-    pdfDirLabel.place(relx=0.5, rely=0.77, anchor="center")
+    pdfDirLabel.place(relx=0.5, rely=0.73, anchor="center")
     
     current_pdf_dir = read_default_value("pdf_export_directory") or os.getcwd()
     pdfDirButton = ctk.CTkButton(popup, text=f"Choose Directory ({os.path.basename(current_pdf_dir)})", 
                                 command=lambda: choose_pdf_directory(pdfDirButton))
-    pdfDirButton.place(relx=0.5, rely=0.82, anchor="center")
+    pdfDirButton.place(relx=0.5, rely=0.78, anchor="center")
 
     button = ctk.CTkButton(popup, text="Save Settings", command=lambda: close_and_save_settings(
         popup, defaultFilamentCostInput.get(), defaultElectricityCostInput.get(), 
         defaultPrinterPowerInput.get(), appearanceModeDropdown.get(), colorThemeDropdown.get(),
-        getattr(settingsDirButton, 'selected_path', current_settings_dir),
         getattr(pdfDirButton, 'selected_path', current_pdf_dir)
     ))
-    button.place(relx=0.5, rely=0.9, anchor="center")
+    button.place(relx=0.5, rely=0.88, anchor="center")
 
     # load default values if they exist
     defaultFilamentCost = read_default_value("filament_cost")
@@ -131,13 +158,6 @@ def show_settings_popup():
     appearanceModeDropdown.set(appearanceMode)
     colorThemeDropdown.set(colorTheme)
 
-def choose_settings_directory(button):
-    """Let user choose directory for settings file"""
-    directory = filedialog.askdirectory(title="Choose Settings Directory")
-    if directory:
-        button.selected_path = directory
-        button.configure(text=f"Choose Directory ({os.path.basename(directory)})")
-
 def choose_pdf_directory(button):
     """Let user choose directory for PDF exports"""
     directory = filedialog.askdirectory(title="Choose PDF Export Directory")
@@ -145,40 +165,30 @@ def choose_pdf_directory(button):
         button.selected_path = directory
         button.configure(text=f"Choose Directory ({os.path.basename(directory)})")
 
-def close_and_save_settings(popup, defaultFilamentCost, defaultElectricityCost, defaultPrinterPower, appearanceMode, colorTheme, settingsDir, pdfDir):
+def close_and_save_settings(popup, defaultFilamentCost, defaultElectricityCost, defaultPrinterPower, appearanceMode, colorTheme, pdfDir):
     popup.destroy()
     try:
-        # Use the user-selected settings directory
-        os.makedirs(settingsDir, exist_ok=True)
-        settings_file_path = os.path.join(settingsDir, "settings.csv")
+        # Use the platform-specific settings path
+        settings_file_path = get_default_settings_path()
         
         # Write new settings, completely overwriting the file
         with open(settings_file_path, "w") as settings_file:
-            settings_file.write("default_filament_cost,default_electricity_cost,default_printer_power,appearance_mode,color_theme,settings_directory,pdf_export_directory\n")
-            settings_file.write(f"{defaultFilamentCost},{defaultElectricityCost},{defaultPrinterPower},{appearanceMode},{colorTheme},{settingsDir},{pdfDir}\n")
+            settings_file.write("default_filament_cost,default_electricity_cost,default_printer_power,appearance_mode,color_theme,pdf_export_directory\n")
+            settings_file.write(f"{defaultFilamentCost},{defaultElectricityCost},{defaultPrinterPower},{appearanceMode},{colorTheme},{pdfDir}\n")
 
         show_error_popup("Settings Saved", "Your settings have been saved successfully. Restart the app to apply any theme changes.")
     except Exception as e:
         show_error_popup("Settings Error", f"An error occurred while saving settings: {str(e)}")
 
 def read_default_value(value):
-    # First try to read from the default location to get the settings directory
-    settings_file_path = "src/data/settings.csv"
+    # Use the platform-specific settings path
+    settings_file_path = get_default_settings_path()
     
     try:
         with open(settings_file_path, "r") as settings_file:
             lines = settings_file.readlines()
             if len(lines) > 1:
                 default_values = lines[1].strip().split(",")
-                
-                # If we have a custom settings directory, use that file instead
-                if len(default_values) > 5 and default_values[5] != "src/data":
-                    custom_settings_path = os.path.join(default_values[5], "settings.csv")
-                    if os.path.exists(custom_settings_path):
-                        with open(custom_settings_path, "r") as custom_file:
-                            custom_lines = custom_file.readlines()
-                            if len(custom_lines) > 1:
-                                default_values = custom_lines[1].strip().split(",")
                 
                 if value == "filament_cost" and len(default_values) > 0:
                     return str(round(float(default_values[0]), 2))
@@ -190,12 +200,10 @@ def read_default_value(value):
                     return default_values[3]
                 elif value == "color_theme" and len(default_values) > 4:
                     return default_values[4]
-                elif value == "settings_directory" and len(default_values) > 5:
+                elif value == "pdf_export_directory" and len(default_values) > 5:
                     return default_values[5]
-                elif value == "pdf_export_directory" and len(default_values) > 6:
-                    return default_values[6]
     except FileNotFoundError:
-        if value not in ["settings_directory", "pdf_export_directory"]:
+        if value not in ["pdf_export_directory"]:
             show_error_popup("Settings Error", "Settings file not found. Please set your defaults in the settings menu.")
     return ""
 
